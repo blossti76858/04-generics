@@ -20,7 +20,7 @@ public abstract class CollectionsUtility {
 	 * @return sorted SimpleList
 	 */
 	public static <T> SimpleList<T> sort(SimpleList<T> list, Comparator<T> cmp) {
-		if (list.size() == 1)
+		if (list.size() <= 1)
 			return list;
 
 		// split list in halves
