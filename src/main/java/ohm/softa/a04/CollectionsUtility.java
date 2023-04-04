@@ -20,8 +20,17 @@ public abstract class CollectionsUtility {
 	 * @return sorted SimpleList
 	 */
 	public static <T> SimpleList<T> sort(SimpleList<T> list, Comparator<T> cmp) {
-		if (list.size() == 1) return list;
-		return merge(sort(left(list), cmp), sort(right(list), cmp), cmp);
+		if (list.size() == 1)
+			return list;
+
+		// split list in halves
+		SimpleList<T> left = createNew(list.getClass());
+		SimpleList<T> right = createNew(list.getClass());
+
+		split(list, left, right);
+		left = sort(left, cmp);
+		right = sort(right, cmp);
+		return merge(left, right, cmp);
 	}
 
 	/**
@@ -34,115 +43,61 @@ public abstract class CollectionsUtility {
 	 * @return sorted, merged list
 	 */
 	private static <T> SimpleList<T> merge(SimpleList<T> left, SimpleList<T> right, Comparator<T> cmp) {
+		// special cases
+		if (left.size() == 0)
+			return right;
+		if (right.size() == 0)
+			return left;
 
-		/* recursion condition */
-		if (left.size() == 0) return right;
-		if (right.size() == 0) return left;
-		SimpleList<T> result = createNew(left.getClass());
+		SimpleList<T> out = createNew(left.getClass());
 
 		/* create iterators */
-		Iterator<T> leftIt = left.iterator();
-		Iterator<T> rightIt = right.iterator();
-		T leftElem = null;
-		T rightElem = null;
+		Iterator<T> li = left.iterator(), ri = right.iterator();
+		T le = null, re = null;
 
-		do {
-			if (leftElem == null) leftElem = leftIt.hasNext() ? leftIt.next() : null;
-			if (rightElem == null) rightElem = rightIt.hasNext() ? rightIt.next() : null;
+		while (li.hasNext() || ri.hasNext() || re != null || le != null) {
+			// advance iterators
+			if (le == null && li.hasNext())
+				le = li.next();
+			if (re == null && ri.hasNext())
+				re = ri.next();
 
-			/* if both temp values have a value - compare them to sort the lists */
-			if (leftElem != null && rightElem != null) {
-				int cmpResult = cmp.compare(leftElem, rightElem);
+			if (re == null && le == null)
+				break;
 
-				/* right element is smaller - insert right */
-				if (cmpResult > 0) {
-					result.add(rightElem);
-					rightElem = null;
+			/* if both elements have values, compare */
+			if (le == null) {
+				out.add(re);
+				re = null;
+			} else if (re == null) {
+				out.add(le);
+				le = null;
+			} else {
+				int c = cmp.compare(le, re);
 
-					/* left element is smaller - insert left */
-				} else if (cmpResult < 0) {
-					result.add(leftElem);
-					leftElem = null;
-
-					/* both elements are equals = insert both */
-				} else {
-					result.add(rightElem);
-					result.add(leftElem);
-					rightElem = null;
-					leftElem = null;
+				if (c >= 0) {
+					out.add(re);
+					re = null;
 				}
-
-				/* right temp element not inserted */
-			} else if (rightElem != null) {
-				result.add(rightElem);
-				rightElem = null;
-
-				/* left temp element not inserted */
-			} else if (leftElem != null) {
-				result.add(leftElem);
-				leftElem = null;
+				if (c <= 0) {
+					out.add(le);
+					le = null;
+				}
 			}
+		}
 
-			/* loop until both iterators are empty and no temp element has a value any more */
-		} while (leftIt.hasNext() || rightIt.hasNext() || (leftElem != null || rightElem != null));
-
-		return result;
+		return out;
 	}
 
-	/**
-	 * Get the left the side of the list
-	 *
-	 * @param list list to split
-	 * @param <T>  type of the list
-	 * @return left side of the list
-	 */
-	private static <T> SimpleList<T> left(SimpleList<T> list) {
-
-		/* return the list if list has only one or none element */
-		if (list.size() <= 1) return list;
-		SimpleList<T> left = createNew(list.getClass());
-		int sizeHalf = list.size() / 2;
-		Iterator<T> it = list.iterator();
-		int i = 0;
-
-		/* add the current element of the iterator to the list
-		 * until the counter reaches the middle of the list */
-		while (i < sizeHalf && it.hasNext()) {
-			left.add(it.next());
+	private static <T> void split(SimpleList<T> in, SimpleList<T> outLeft, SimpleList<T> outRight) {
+		int i = 0, h = in.size() / 2;
+		SimpleList<T> out = outLeft;
+		for (T t : in) {
+			if (i == h)
+				out = outRight;
+			out.add(t);
 			i++;
 		}
-		return left;
-	}
-
-	/**
-	 * Get the right side of the list
-	 *
-	 * @param list list to split
-	 * @param <T>  type of the list
-	 * @return right side of the list
-	 */
-	private static <T> SimpleList<T> right(SimpleList<T> list) {
-
-		/* return the list if list has only one or none element */
-		if (list.size() <= 1) return list;
-		SimpleList<T> right = createNew(list.getClass());
-		int sizeHalf = list.size() / 2;
-		Iterator<T> it = list.iterator();
-		int i = 0;
-		while (i < list.size() && it.hasNext()) {
-			if (i < sizeHalf) {
-
-				/* continue until the middle of the list */
-				it.next();
-				i++;
-				continue;
-			}
-
-			/* add all elements including the middle item */
-			right.add(it.next());
-			i++;
-		}
-		return right;
 	}
 
 	/**
